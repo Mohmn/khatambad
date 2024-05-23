@@ -1,0 +1,13 @@
+.git
+.svn
+.hg
+node_modules
+*.log
+*.tmp
+*.swp
+.DS_Store
+.idea
+.vscode
+*.bak
+*.backup
+*.cache
