@@ -1,6 +1,5 @@
-
 function getForeignKeyTableNameQueryFunction() {
-    return `
+  return `
     CREATE OR REPLACE FUNCTION get_foreign_key_table_name(query_table_name text, query_column_name text)
     RETURNS text AS $$
     DECLARE
@@ -28,7 +27,7 @@ function getForeignKeyTableNameQueryFunction() {
 }
 
 function getColumnNamesQueryFunction() {
-    return `
+  return `
     CREATE OR REPLACE FUNCTION get_column_names(query_table_name text)
         RETURNS TEXT[] AS $$
         DECLARE
@@ -48,7 +47,4 @@ function getColumnNamesQueryFunction() {
     `;
 }
 
-export {
-    getForeignKeyTableNameQueryFunction,
-    getColumnNamesQueryFunction,
-}
+export { getForeignKeyTableNameQueryFunction, getColumnNamesQueryFunction };

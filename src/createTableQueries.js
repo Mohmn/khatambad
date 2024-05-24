@@ -1,5 +1,5 @@
 function getSellerTableQuery() {
-    return `
+  return `
         CREATE TABLE IF NOT EXISTS Seller (
             id SERIAL PRIMARY KEY,
             name VARCHAR(150) NOT NULL,
@@ -12,7 +12,7 @@ function getSellerTableQuery() {
 }
 
 function getCustomerTableQuery() {
-    return `
+  return `
         CREATE TABLE IF NOT EXISTS Customer (
             id SERIAL PRIMARY KEY,
             name VARCHAR(150) NOT NULL,
@@ -26,7 +26,7 @@ function getCustomerTableQuery() {
 }
 
 function getProductsTableQuery() {
-    return `
+  return `
         CREATE TABLE IF NOT EXISTS Product (
             id SERIAL PRIMARY KEY,
             description VARCHAR(1000) NOT NULL,
@@ -39,7 +39,7 @@ function getProductsTableQuery() {
 }
 
 function getSellerProductTableQuery() {
-    return `
+  return `
         CREATE TABLE IF NOT EXISTS SellerProduct (
             id SERIAL PRIMARY KEY,
             seller_id INTEGER REFERENCES Seller(id) ON DELETE CASCADE NOT NULL,
@@ -54,7 +54,7 @@ function getSellerProductTableQuery() {
 }
 
 function getCartTableQuery() {
-    return `
+  return `
         CREATE TABLE IF NOT EXISTS Cart (
             id SERIAL PRIMARY KEY,
             customer_id INTEGER REFERENCES Customer(id) ON DELETE CASCADE NOT NULL,
@@ -70,7 +70,7 @@ function getCartTableQuery() {
 }
 
 function getOrderTableQuery() {
-    return `
+  return `
         CREATE TABLE IF NOT EXISTS Order (
             id SERIAL PRIMARY KEY,
             customer_id INTEGER REFERENCES Customer(id) NOT NULL,
@@ -84,12 +84,11 @@ function getOrderTableQuery() {
     `;
 }
 
-
 export {
-    getCartTableQuery,
-    getOrderTableQuery,
-    getProductsTableQuery,
-    getSellerProductTableQuery,
-    getSellerTableQuery,
-    getCustomerTableQuery,
-}
+  getCartTableQuery,
+  getOrderTableQuery,
+  getProductsTableQuery,
+  getSellerProductTableQuery,
+  getSellerTableQuery,
+  getCustomerTableQuery,
+};

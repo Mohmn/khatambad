@@ -1,5 +1,5 @@
-import 'dotenv/config';
-import pg from 'pg';
+import "dotenv/config";
+import pg from "pg";
 
 let client = null;
 
@@ -19,9 +19,8 @@ console.log(`Database name: ${dbName}`);
 
 // Validate environment variables
 if (!dbHost || !dbUser || !dbPass || !dbPort || !dbName) {
-  throw new Error('Database environment variables are not properly set.');
+  throw new Error("Database environment variables are not properly set.");
 }
-
 
 /**
  * Connects to the database and returns the database client.
@@ -43,10 +42,10 @@ const getDBConnection = async () => {
     });
 
     await client.connect();
-    console.log('Connected to the database successfully.');
+    console.log("Connected to the database successfully.");
     return client;
   } catch (error) {
-    console.error('Error while connecting to the database:', error.message);
+    console.error("Error while connecting to the database:", error.message);
     throw error; // rethrow the error after logging it
   }
 };
@@ -55,9 +54,9 @@ const getDBConnection = async () => {
 (async () => {
   try {
     await getDBConnection();
-    console.log('Database connection established.');
+    console.log("Database connection established.");
   } catch (error) {
-    console.error('Failed to establish database connection:', error);
+    console.error("Failed to establish database connection:", error);
   }
 })();
 
