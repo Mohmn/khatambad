@@ -1,4 +1,5 @@
 import getDBConnection from "./connection.js";
+import { shuffleArray } from "./utils.js";
 import {
   getCartTableQuery,
   getOrderTableQuery,
@@ -12,14 +13,12 @@ import {
   getSellerInsertQuery,
   getProductInsertQuery,
 } from "./createInsertQueries.js";
-import {
-  generateCustomerData,
-  generateProductData,
-  generateSellerData,
-} from "./fake-data.js";
+import { generateCustomerData, generateProductData, generateSellerData } from "./fake-data.js";
 import {
   getColumnNamesQueryFunction,
   getForeignKeyTableNameQueryFunction,
+  getUniqueColumnNamesFromTableFunction,
+  isForeignKeyQueryFunction,
 } from "./createHelperFunctions.js";
 import PopluateData from "./populate-data.js";
 import TaskQueuePC from "./task-queue-producer-consumer.js";
@@ -46,6 +45,8 @@ async function createHelperFunctions(client) {
     await Promise.all([
       client.query(getForeignKeyTableNameQueryFunction()),
       client.query(getColumnNamesQueryFunction()),
+      client.query(getUniqueColumnNamesFromTableFunction()),
+      client.query(isForeignKeyQueryFunction()),
     ]);
     console.log("succesfuly created helper Functions");
   } catch (error) {
@@ -54,75 +55,106 @@ async function createHelperFunctions(client) {
   }
 }
 
-function populateDataFactory(
+/**
+ * Function: populateDataFactory
+ *
+ * Description: Factory function to initialize and return an instance of PopluateData class based on the provided type.
+ *
+ * @param {string} type - The type of data to populate (e.g., "Seller", "Customer", "Product", "SellerProduct").
+ * @param {object} dbClient - The database client object to interact with the database.
+ * @param {number} rowsToGenerate - The number of rows to generate for the specified type.
+ * @param {number} populateBatchSize - The batch size for populating data in the database.
+ * @param {function} dataGeneratorFn - The function that generates data for the specified type.
+ *
+ * @returns {Promise<PopluateData>} - A Promise that resolves to an instance of PopluateData class initialized with the provided configuration.
+ *
+ * @throws {Error} - If the provided type is not recognized or supported.
+ */
+
+async function populateDataFactory(
   type,
   dbClient,
   rowsToGenerate,
   populateBatchSize,
+  dataGeneratorFn,
 ) {
   if (type === "Seller") {
-    return new PopluateData({
+    return await PopluateData.initialize({
       tableName: type,
       dbClient,
       rowsToGenerate,
       populateBatchSize,
+      dataGeneratorFn,
     });
   }
   if (type === "Customer") {
-    return new PopluateData({
+    return await PopluateData.initialize({
       tableName: type,
       dbClient,
       rowsToGenerate,
       populateBatchSize,
+      dataGeneratorFn,
     });
   }
   if (type === "Product") {
-    return new PopluateData({
+    return await PopluateData.initialize({
       tableName: type,
       dbClient,
       rowsToGenerate,
       populateBatchSize,
+      dataGeneratorFn,
+    });
+  }
+  if (type === "SellerProduct") {
+    return await PopluateData.initialize({
+      tableName: type,
+      dbClient,
+      rowsToGenerate,
+      populateBatchSize,
+      dataGeneratorFn,
     });
   }
 
   throw new Error("table doesnt exit", type);
 }
 
-function shuffleArray(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
-}
-
+// id SERIAL PRIMARY KEY,
+// seller_id INTEGER REFERENCES Seller(id) ON DELETE CASCADE NOT NULL,
+// product_id INTEGER REFERENCES Product(id) ON DELETE CASCADE NOT NULL,
+// price NUMERIC(50, 4) NOT NULL CHECK (price >= 0),
+// discount NUMERIC(5, 4) NOT NULL DEFAULT 0 CHECK (discount >= 0),
+// createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+// updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+// UNIQUE (seller_id, product_id)
+// insert into getSellerProductTableQuery(seller_id,product_id,price,discount)
+// values(8460066,2804901,50,2)
 (async function main() {
-  const lakh = 200000;
+  const lakh = 1;
   const populateBatchSize = 100;
   const connection = await getDBConnection();
-  await Promise.all([
-    createDbTables(connection),
-    createHelperFunctions(connection),
-  ]);
+  await Promise.all([createDbTables(connection), createHelperFunctions(connection)]);
 
   const taskConsumerQueue = new TaskQueuePC(500);
-  const sellerPopulator = populateDataFactory(
+  const sellerPopulator = await populateDataFactory(
     "Seller",
     connection,
     lakh,
     populateBatchSize,
+    generateSellerData,
   );
-  const customerPopulator = populateDataFactory(
+  const customerPopulator = await populateDataFactory(
     "Customer",
     connection,
     lakh,
     populateBatchSize,
+    generateCustomerData,
   );
-  const productPopulator = populateDataFactory(
+  const productPopulator = await populateDataFactory(
     "Product",
     connection,
     lakh,
     populateBatchSize,
+    generateProductData,
   );
 
   let dataHasBeenPopulated = () =>
@@ -137,18 +169,9 @@ function shuffleArray(array) {
     // console.log('Main Loop Iteration:', i, 'Queue Empty:', taskConsumerQueue.hasNoTasks());
     if (taskConsumerQueue.hasNoTasks()) {
       const taskArray = [
-        ...(await sellerPopulator.generateDataTasks(
-          getSellerInsertQuery,
-          generateSellerData,
-        )),
-        ...(await customerPopulator.generateDataTasks(
-          getCustomerInsertQuery,
-          generateCustomerData,
-        )),
-        ...(await productPopulator.generateDataTasks(
-          getProductInsertQuery,
-          generateProductData,
-        )),
+        ...(await sellerPopulator.generateDataTasks()),
+        ...(await customerPopulator.generateDataTasks()),
+        ...(await productPopulator.generateDataTasks()),
       ];
       shuffleArray(taskArray).forEach((task) => {
         taskConsumerQueue.runTask(task).catch((err) => {

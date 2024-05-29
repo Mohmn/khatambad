@@ -18,6 +18,7 @@ export default [
       semi: ["warn", "always"],
       indent: ["error", 2],
       "no-unused-vars": "warn",
+      "no-useless-catch": "off",
     },
     plugins: {
       prettier: prettier,
