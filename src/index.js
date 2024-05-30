@@ -8,12 +8,13 @@ import {
   getSellerTableQuery,
   getCustomerTableQuery,
 } from "./createTableQueries.js";
+
 import {
-  getCustomerInsertQuery,
-  getSellerInsertQuery,
-  getProductInsertQuery,
-} from "./createInsertQueries.js";
-import { generateCustomerData, generateProductData, generateSellerData } from "./fake-data.js";
+  generateCustomerData,
+  generateProductData,
+  generateSellerData,
+  generateSellerProductData,
+} from "./fake-data.js";
 import {
   getColumnNamesQueryFunction,
   getForeignKeyTableNameQueryFunction,
@@ -129,8 +130,8 @@ async function populateDataFactory(
 // insert into getSellerProductTableQuery(seller_id,product_id,price,discount)
 // values(8460066,2804901,50,2)
 (async function main() {
-  const lakh = 1;
-  const populateBatchSize = 100;
+  const lakh = 222000;
+  const populateBatchSize = 471;
   const connection = await getDBConnection();
   await Promise.all([createDbTables(connection), createHelperFunctions(connection)]);
 
@@ -157,21 +158,32 @@ async function populateDataFactory(
     generateProductData,
   );
 
+  const sellerProductPopulator = await populateDataFactory(
+    "SellerProduct",
+    connection,
+    lakh,
+    populateBatchSize,
+    generateSellerProductData,
+  );
+
   let dataHasBeenPopulated = () =>
     sellerPopulator.allRowsHaveBeenGenerated() &&
     customerPopulator.allRowsHaveBeenGenerated() &&
     productPopulator.allRowsHaveBeenGenerated();
+  // &&
+  // sellerProductPopulator.allRowsHaveBeenGenerated();
 
   let continueProcessing = true;
 
   while (continueProcessing) {
     continueProcessing = !dataHasBeenPopulated();
-    // console.log('Main Loop Iteration:', i, 'Queue Empty:', taskConsumerQueue.hasNoTasks());
+    // console.log("Main Loop Iteration:", "Queue Empty:", continueProcessing, dataHasBeenPopulated());
     if (taskConsumerQueue.hasNoTasks()) {
       const taskArray = [
         ...(await sellerPopulator.generateDataTasks()),
         ...(await customerPopulator.generateDataTasks()),
         ...(await productPopulator.generateDataTasks()),
+        // ...(await sellerProductPopulator.generateDataTasks()),
       ];
       shuffleArray(taskArray).forEach((task) => {
         taskConsumerQueue.runTask(task).catch((err) => {
@@ -188,5 +200,5 @@ async function populateDataFactory(
     await new Promise((resolve) => setImmediate(resolve));
   }
 
-  // console.log('Database connection established:', connection);
+  console.log("done", continueProcessing);
 })();

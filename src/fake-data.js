@@ -12,7 +12,7 @@ function generateCustomerData() {
   return {
     name: faker.person.fullName(),
     email: faker.internet.email(),
-    shpping_address: faker.location.streetAddress(),
+    shipping_address: faker.location.streetAddress(),
     pincode: faker.location.zipCode(),
   };
 }
@@ -26,4 +26,11 @@ function generateProductData() {
   };
 }
 
-export { generateCustomerData, generateSellerData, generateProductData };
+function generateSellerProductData() {
+  return {
+    price: +faker.commerce.price(),
+    // discount: faker.number.int({ min: 1, max: 30 }),
+  };
+}
+
+export { generateCustomerData, generateSellerData, generateProductData, generateSellerProductData };

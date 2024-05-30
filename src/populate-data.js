@@ -5,7 +5,7 @@ export default class PopluateData {
     this.tableName = config.tableName.toLowerCase();
     this.rowsToGenerate = config.rowsToGenerate;
     this.dbClient = config.dbClient;
-    this.rowsGenerated = null;
+    this.rowsGenerated = 0;
     this.populateBatchSize = config.populateBatchSize ?? 100;
     this.dataGeneratorFn = config.dataGeneratorFn;
     this.foreignKeys = null;
@@ -18,6 +18,7 @@ export default class PopluateData {
     instance.columnNames = await instance.getColumnNames();
     instance.foreignKeys = await instance.getForeignTableNames();
     instance.uniqueColumnNames = await instance._getUniqueContraintsQuery();
+    instance.rowsGenerated = await instance.getTotalRowCount();
     console.log("cc", instance.uniqueColumnNames);
     return instance;
   }
@@ -30,7 +31,6 @@ export default class PopluateData {
    * @throws {Error} If an error occurs while fetching the column names.
    */
   async getColumnNames() {
-    if (this.columnNames) return this.columnNames;
     try {
       const result = await this.dbClient.query(
         `select * from get_column_names('${this.tableName}')`,
@@ -38,6 +38,7 @@ export default class PopluateData {
       return result.rows[0].get_column_names;
     } catch (err) {
       console.log(`error while geting column names of ${this.tableName}`, err);
+      throw err;
     }
   }
 
@@ -87,16 +88,16 @@ export default class PopluateData {
    * Limits the result set to the 'populateBatchSize' specified for batching purposes.
    *
    * @param {string} foreignTableName - The name of the foreign table to retrieve random ids from.
-   * @returns {Array<number>} An array of random 'id' values from the foreign table.
+   * @returns {Promise<Array<number>>} An array of random 'id' values from the foreign table.
    * @throws {Error} If an error occurs while querying the database or retrieving the random ids.
    */
-  async getRandomIdsFromForeignTables(foreignTableName) {
+  async getRandomIdsFromForeignTables(foreignTableName, rowSize) {
     try {
       const result = await this.dbClient.query(`
         select id from ${foreignTableName} ORDER BY RANDOM()
-        LIMIT ${this.populateBatchSize};
+        LIMIT ${rowSize};
       `);
-      return result[0].rows.id;
+      return result.rows.map((r) => r.id);
     } catch (error) {
       throw error;
     }
@@ -109,17 +110,17 @@ export default class PopluateData {
    * Constructs an insert query with the table name, keys to insert, and batch size using the 'expandValues' function.
    * If there are unique column names, adds an 'ON CONFLICT' clause to the query.
    */
-  async generateInsertQuery() {
+  generateInsertQuery(rowSize) {
     const keysToInsert = this._getInserstionKeys();
     const uniqueColumnNames = this._returnLargestCompositeKey();
 
     let query = `
       insert into ${this.tableName}(${keysToInsert.join(",")})
-      VALUES${expandValues(keysToInsert.length, this.populateBatchSize)}
+      VALUES${expandValues(keysToInsert.length, rowSize)}
     `;
 
     if (uniqueColumnNames.length) {
-      query += `ON CONFLICT (${uniqueColumnNames.join(",")}) do nothing`;
+      query += `ON CONFLICT (${uniqueColumnNames.join(",")}) do nothing;`;
     }
 
     return query;
@@ -133,42 +134,43 @@ export default class PopluateData {
    * @returns {Array<string>} An array of insertion keys for populating the table.
    */
   _getInserstionKeys() {
-    const foreignColumns = Object.values(this.foreignKeys);
+    const foreignColumns = Object.keys(this.foreignKeys);
     const nonForeignCoulumns = Object.keys(this.dataGeneratorFn());
     return [...nonForeignCoulumns, ...foreignColumns];
   }
 
   async generateDataTasks() {
-    const count = await this.getTotalRowCount();
-    if (this.rowsGenerated === null) this.rowsGenerated = count;
-    if (count >= this.rowsToGenerate) return [];
+    // console.log("ff start", this.rowsGenerated, this.rowsToGenerate);
+    if (this.allRowsHaveBeenGenerated()) return [];
 
     const promises = [];
-    const totalQueriesToRun = Math.abs(this.rowsToGenerate - count);
+    const totalQueriesToRun = Math.abs(this.rowsToGenerate - this.rowsGenerated);
     const fullBatches = Math.floor(totalQueriesToRun / this.populateBatchSize);
     const remainingRows = totalQueriesToRun % this.populateBatchSize;
-
     for (let i = 0; i < fullBatches; i++) {
-      promises.push(this.createBatchPromise());
+      promises.push(this.createBatchPromise(this.populateBatchSize));
     }
 
-    if (remainingRows > 0) {
-      promises.push(this.createBatchPromise(remainingRows));
-    }
+    if (remainingRows > 0) promises.push(this.createBatchPromise(remainingRows));
 
     return promises;
   }
-  createBatchPromise() {
+  createBatchPromise(rowSize) {
     return async () => {
       try {
         // await this.dbClient.query('BEGIN');
-        const insertionQuery = await this.generateInsertQuery();
-        const values = await this.getValuesCombinedWithFoerignIds();
-        console.log("insertQuery", insertionQuery, values);
-        await this.dbClient.query(insertionQuery, values);
+        this.rowsGenerated += rowSize;
+        const insertionQuery = this.generateInsertQuery(rowSize);
+        // can make it even faster why await if we dont have fireing ids
+        const values = await this.getValuesCombinedWithFoerignIds(rowSize);
+        // console.log("vvv", values, insertionQuery);
+        this.dbClient.query(insertionQuery, values).catch((err) => {
+          this.rowsGenerated -= rowSize;
+          throw err;
+        });
         // await this.dbClient.query('COMMIT');
-        this.rowsGenerated += this.populateBatchSize;
       } catch (err) {
+        this.rowsGenerated -= rowSize;
         // await this.dbClient.query('ROLLBACK');
         console.error("Error in batch operation, transaction rolled back:", err);
         throw err;
@@ -186,7 +188,7 @@ export default class PopluateData {
    */
   _returnLargestCompositeKey() {
     const uniqueColumnNamesFromTableResults = [...this.uniqueColumnNames];
-    if (!uniqueColumnNamesFromTableResults.length) return null;
+    if (!uniqueColumnNamesFromTableResults.length) return [];
     let maxLength = 0,
       maxLengthIndex = 0;
     for (let i = 0; i < uniqueColumnNamesFromTableResults.length; i++) {
@@ -231,21 +233,24 @@ export default class PopluateData {
    * @returns {Promise<Array<Array<any>>} A promise that resolves with an array of arrays containing values combined with foreign keys.
    * @throws {Error} If an error occurs while retrieving values or combining with foreign keys.
    */
-  async getValuesCombinedWithFoerignIds() {
+  async getValuesCombinedWithFoerignIds(rowSize) {
     try {
       const foreignKeyColumns = this.foreignKeys;
-
+      const foreignTableNames = Object.values(foreignKeyColumns);
       const foriegnKeyValues = await Promise.all(
-        Object.values(foreignKeyColumns).map((fk) => this.getRandomIdsFromForeignTables(fk)),
+        foreignTableNames.map(async (fk) => {
+          return await this.getRandomIdsFromForeignTables(fk, rowSize);
+        }),
       );
       const values = [];
-      for (let i = 0; i < this.populateBatchSize; i++) {
-        if (i > foriegnKeyValues.length) break;
-        values.push([
-          ...Object.values(this.dataGeneratorFn()),
-          ...foriegnKeyValues.map((arr) => arr[i]),
-        ]);
+      for (let i = 0; i < rowSize; i++) {
+        values.push(...Object.values(this.dataGeneratorFn()));
+        if (foreignTableNames.length > 0) {
+          const keys = foriegnKeyValues.map((arr) => arr.pop());
+          values.push(...keys);
+        }
       }
+      // console.log("vvv", values);
       return values;
     } catch (err) {
       throw err;
