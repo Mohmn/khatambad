@@ -6,7 +6,7 @@ function getSellerTableQuery() {
             email VARCHAR(300) UNIQUE NOT NULL,
             selling_license_key VARCHAR(255) UNIQUE NOT NULL,
             createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL 
         );
     `;
 }
@@ -71,7 +71,7 @@ function getCartTableQuery() {
 
 function getOrderTableQuery() {
   return `
-        CREATE TABLE IF NOT EXISTS Order (
+        CREATE TABLE IF NOT EXISTS Orders (
             id SERIAL PRIMARY KEY,
             customer_id INTEGER REFERENCES Customer(id) NOT NULL,
             seller_product_id INTEGER REFERENCES SellerProduct(id) NOT NULL,

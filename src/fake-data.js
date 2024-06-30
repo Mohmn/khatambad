@@ -33,4 +33,26 @@ function generateSellerProductData() {
   };
 }
 
-export { generateCustomerData, generateSellerData, generateProductData, generateSellerProductData };
+function generateCartData() {
+  return {
+    quantity: faker.number.int({ min: 1, max: 10 }),
+    price: +faker.commerce.price({ dec: 4 }),
+    discount: faker.number.int({ min: 1, max: 15 }),
+  };
+}
+
+function generateOrderData() {
+  return {
+    quantity: faker.number.int({ min: 1, max: 10 }),
+    amount: +faker.commerce.price(),
+  };
+}
+
+export {
+  generateCustomerData,
+  generateSellerData,
+  generateProductData,
+  generateSellerProductData,
+  generateOrderData,
+  generateCartData,
+};
