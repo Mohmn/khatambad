@@ -48,7 +48,7 @@ class TaskQueuePC {
         const task = await this.getNextTask();
         await task();
       } catch (err) {
-        // throw err;
+        console.error(err);
       }
     }
   }

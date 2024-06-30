@@ -37,7 +37,7 @@ function generateCartData() {
   return {
     quantity: faker.number.int({ min: 1, max: 10 }),
     price: +faker.commerce.price({ dec: 4 }),
-    discount: faker.number.int({ min: 1, max: 15 }),
+    discount: parseFloat((faker.number.int({ min: 0, max: 20 }) / 100).toFixed(2)),
   };
 }
 

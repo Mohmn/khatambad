@@ -45,14 +45,9 @@ export default class PopulateData {
         if (this.taskConsumerQueue.hasNoTasks()) {
           const tasks = await populator.generateDataTasks();
           tasks.forEach((task) => {
-            this.taskConsumerQueue
-              .runTask(task)
-              .then((d) => {
-                console.log("d", d);
-              })
-              .catch((error) => {
-                console.log("errrror", error);
-              });
+            this.taskConsumerQueue.runTask(task).catch((error) => {
+              console.log("errrror", error);
+            });
           });
         }
         await new Promise((resolve) => setImmediate(resolve));
