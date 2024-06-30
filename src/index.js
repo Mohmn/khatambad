@@ -14,6 +14,8 @@ import {
   generateProductData,
   generateSellerData,
   generateSellerProductData,
+  generateCartData,
+  generateOrderData,
 } from "./fake-data.js";
 import {
   getColumnNamesQueryFunction,
@@ -21,8 +23,8 @@ import {
   getUniqueColumnNamesFromTableFunction,
   isForeignKeyQueryFunction,
 } from "./createHelperFunctions.js";
-import PopluateData from "./populate-data.js";
-import TaskQueuePC from "./task-queue-producer-consumer.js";
+import PopluateTable from "./populateTable.js";
+import PopulateData from "./populateData.js";
 
 async function createDbTables(client) {
   try {
@@ -32,7 +34,7 @@ async function createDbTables(client) {
       client.query(getProductsTableQuery()),
       client.query(getSellerProductTableQuery()),
       client.query(getCartTableQuery()),
-      // client.query(getOrderTableQuery()),
+      client.query(getOrderTableQuery()),
     ]);
     console.log("succesfuly created tables");
   } catch (error) {
@@ -79,44 +81,15 @@ async function populateDataFactory(
   populateBatchSize,
   dataGeneratorFn,
 ) {
-  if (type === "Seller") {
-    return await PopluateData.initialize({
-      tableName: type,
-      dbClient,
-      rowsToGenerate,
-      populateBatchSize,
-      dataGeneratorFn,
-    });
-  }
-  if (type === "Customer") {
-    return await PopluateData.initialize({
-      tableName: type,
-      dbClient,
-      rowsToGenerate,
-      populateBatchSize,
-      dataGeneratorFn,
-    });
-  }
-  if (type === "Product") {
-    return await PopluateData.initialize({
-      tableName: type,
-      dbClient,
-      rowsToGenerate,
-      populateBatchSize,
-      dataGeneratorFn,
-    });
-  }
-  if (type === "SellerProduct") {
-    return await PopluateData.initialize({
-      tableName: type,
-      dbClient,
-      rowsToGenerate,
-      populateBatchSize,
-      dataGeneratorFn,
-    });
-  }
-
-  throw new Error("table doesnt exit", type);
+  if (!["Seller", "Customer", "Product", "SellerProduct", "Cart", "Orders"].includes(type))
+    throw new Error("table doesnt exit", type);
+  return await PopluateTable.initialize({
+    tableName: type,
+    dbClient,
+    rowsToGenerate,
+    populateBatchSize,
+    dataGeneratorFn,
+  });
 }
 
 // id SERIAL PRIMARY KEY,
@@ -130,12 +103,11 @@ async function populateDataFactory(
 // insert into getSellerProductTableQuery(seller_id,product_id,price,discount)
 // values(8460066,2804901,50,2)
 (async function main() {
-  const lakh = 222000;
-  const populateBatchSize = 471;
+  const lakh = 100000;
+  const populateBatchSize = 500;
   const connection = await getDBConnection();
   await Promise.all([createDbTables(connection), createHelperFunctions(connection)]);
 
-  const taskConsumerQueue = new TaskQueuePC(500);
   const sellerPopulator = await populateDataFactory(
     "Seller",
     connection,
@@ -166,39 +138,34 @@ async function populateDataFactory(
     generateSellerProductData,
   );
 
-  let dataHasBeenPopulated = () =>
-    sellerPopulator.allRowsHaveBeenGenerated() &&
-    customerPopulator.allRowsHaveBeenGenerated() &&
-    productPopulator.allRowsHaveBeenGenerated();
-  // &&
-  // sellerProductPopulator.allRowsHaveBeenGenerated();
+  const Cart = await populateDataFactory(
+    "Cart",
+    connection,
+    lakh,
+    populateBatchSize,
+    generateCartData,
+  );
 
-  let continueProcessing = true;
+  const Orders = await populateDataFactory(
+    "Orders",
+    connection,
+    lakh,
+    populateBatchSize,
+    generateOrderData,
+  );
 
-  while (continueProcessing) {
-    continueProcessing = !dataHasBeenPopulated();
-    // console.log("Main Loop Iteration:", "Queue Empty:", continueProcessing, dataHasBeenPopulated());
-    if (taskConsumerQueue.hasNoTasks()) {
-      const taskArray = [
-        ...(await sellerPopulator.generateDataTasks()),
-        ...(await customerPopulator.generateDataTasks()),
-        ...(await productPopulator.generateDataTasks()),
-        // ...(await sellerProductPopulator.generateDataTasks()),
-      ];
-      shuffleArray(taskArray).forEach((task) => {
-        taskConsumerQueue.runTask(task).catch((err) => {
-          console.log("Error running task:", err);
-        });
-      });
-    }
-    // i++;
-    // process.nextTick(() => {console.log('give control back to the event loop')})
-    // give control back to the event loop')
-    // await here means wait unit its gets resolved ,
-    // in the mean time do context swithing aka do other protity tasks in event loop
-    // if we remove this line this will actulay blcok the ecent qeue
-    await new Promise((resolve) => setImmediate(resolve));
-  }
+  const populateData = new PopulateData({
+    populateTables: [
+      sellerProductPopulator,
+      sellerPopulator,
+      Orders,
+      Cart,
+      productPopulator,
+      customerPopulator,
+    ],
+    rowsToPopulateConcurrently: 400,
+  });
 
-  console.log("done", continueProcessing);
+  await populateData.initialize();
+  await populateData.populate();
 })();
