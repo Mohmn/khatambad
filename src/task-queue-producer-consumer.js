@@ -43,14 +43,12 @@ class TaskQueuePC {
   }
 
   async consumer() {
-    // let i = 0;
     while (true) {
-      // con/sole.log('Consumer iteration:', i, 'Task Queue Length:', this.taskQueue.length, 'Consumer Queue Length:', this.consumerQueue.length);
       try {
         const task = await this.getNextTask();
         await task();
       } catch (err) {
-        // console.error('Error in consumer task execution:', err);
+        // throw err;
       }
     }
   }
@@ -71,7 +69,6 @@ class TaskQueuePC {
     return new Promise((resolve, reject) => {
       const taskWrapper = () => {
         const taskPromise = task();
-        // console.log('takPromose',taskPromise)
         taskPromise.then(resolve, reject);
         return taskPromise;
       };
