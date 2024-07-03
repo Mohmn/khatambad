@@ -88,7 +88,6 @@ export default class PopulateTable {
     try {
       const columnNames = await this.getColumnNames();
       const foreignKeys = {};
-      console.log("columnNames", columnNames);
       await Promise.all(
         columnNames.map((element) => {
           return this.dbClient

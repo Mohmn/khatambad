@@ -25,7 +25,6 @@ export default class PopulateData {
       //   if (popTab2IsDependentOnPopTab) graph.get(popTab.tableName).add(popTab2.tableName);
       // }
     }
-    console.log("graphh", graph);
     const orderToPopulateTablesIn = this.topoSort(graph);
 
     orderToPopulateTablesIn.forEach((tableName) => {
@@ -33,6 +32,7 @@ export default class PopulateData {
       this.orderToPopulateTablesIn.push(table);
     });
     this.taskConsumerQueue = new TaskQueuePC(this.rowsToPopulateConcurrently);
+    return this;
   }
 
   async populate() {
@@ -45,9 +45,7 @@ export default class PopulateData {
         if (this.taskConsumerQueue.hasNoTasks()) {
           const tasks = await populator.generateDataTasks();
           tasks.forEach((task) => {
-            this.taskConsumerQueue.runTask(task).catch((error) => {
-              console.log("errrror", error);
-            });
+            this.taskConsumerQueue.runTask(task).catch((error) => {});
           });
         }
         await new Promise((resolve) => setImmediate(resolve));
@@ -56,7 +54,6 @@ export default class PopulateData {
     // Code to measure
     const [seconds, nanoseconds] = process.hrtime(start);
     console.log(`Execution time: ${seconds} seconds and ${nanoseconds} nanoseconds`);
-    console.log("done33");
   }
 
   /**
@@ -80,7 +77,6 @@ export default class PopulateData {
       if (!visited.has(tables[i])) dfs(graph, tables[i]);
     }
 
-    console.log("ooo", orderToPopulateTablesIn, graph);
 
     return orderToPopulateTablesIn;
   }

@@ -7,6 +7,7 @@ function shuffleArray(array) {
 }
 
 function expandValues(maxVals, extendSize = 1) {
+  if (!maxVals) return "";
   let str = "";
   for (let i = 0; i < extendSize; i++) {
     str += "(";
