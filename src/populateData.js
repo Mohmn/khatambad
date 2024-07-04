@@ -1,9 +1,13 @@
-import PopulateTable from "./populateTable.js";
 import TaskQueuePC from "./task-queue-producer-consumer.js";
 
 export default class PopulateData {
+  /**
+   * @param {Object} config - Configuration for the PopulateData instance.
+   * @param {Array<PopulateTable>} config.populateTables - An array of PopulateTable instances.
+   * @param {number} [config.rowsToPopulateConcurrently=250] - Number of rows to populate concurrently.
+   */
   constructor(config) {
-    this.populateTables = config.populateTables; // array;
+    this.populateTables = config.populateTables; // array PopulateTable;
     this.orderToPopulateTablesIn = [];
     this.rowsToPopulateConcurrently = config.rowsToPopulateConcurrently ?? 250;
     this.taskConsumerQueue = null;
@@ -76,7 +80,6 @@ export default class PopulateData {
     for (let i = 0; i < tables.length; i++) {
       if (!visited.has(tables[i])) dfs(graph, tables[i]);
     }
-
 
     return orderToPopulateTablesIn;
   }

@@ -1,5 +1,4 @@
 import getDBConnection from "./connection.js";
-import { shuffleArray } from "./utils.js";
 import {
   getCartTableQuery,
   getOrderTableQuery,
@@ -92,16 +91,6 @@ async function populateDataFactory(
   });
 }
 
-// id SERIAL PRIMARY KEY,
-// seller_id INTEGER REFERENCES Seller(id) ON DELETE CASCADE NOT NULL,
-// product_id INTEGER REFERENCES Product(id) ON DELETE CASCADE NOT NULL,
-// price NUMERIC(50, 4) NOT NULL CHECK (price >= 0),
-// discount NUMERIC(5, 4) NOT NULL DEFAULT 0 CHECK (discount >= 0),
-// createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-// updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-// UNIQUE (seller_id, product_id)
-// insert into getSellerProductTableQuery(seller_id,product_id,price,discount)
-// values(8460066,2804901,50,2)
 (async function main() {
   const lakh = 100000;
   const populateBatchSize = 500;
