@@ -1,5 +1,4 @@
-markdown
-Copy code
+
 # Database Populator
 
 This Node.js script helps developers fill databases with data quickly for testing and performance purposes. The script creates necessary database tables, helper functions, and populates the tables with generated fake data.
@@ -76,5 +75,8 @@ The script allows configuring the number of rows to generate and the batch size 
 ## Notes
 The script only works with **PostgreSQL** for now. Support for other databases will be added in the future.
 
-##License
+## License
 This project is licensed under the **MIT** License.
+
+## Acknowledgments
+I came across Arnav Gupta's(https://x.com/championswimmer) tweett(https://x.com/championswimmer/status/1789356528421486798)  and found it quite interesting. I immediately started working on it, focusing first on database fundamentals. While implementing the e-commerce aspect, the idea to automate the process struck me, leading to the creation of this project. Serendipitously , this project covers every aspect of the roadmap, including concurrency, databases, and utilities.
